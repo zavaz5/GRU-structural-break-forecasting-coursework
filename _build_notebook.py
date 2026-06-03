@@ -1032,43 +1032,53 @@ plt.savefig("figures/metric_grid.png", bbox_inches="tight"); plt.show()
 
 # ===========================================================================
 md(r'''
-### 6.8 Overall break-aware classification — *Table 2 / Figure 1* format
+### 6.8 Break-detection comparison — *Table 2 / Figure 1* format
 
-To line up with the ARIMA-family report's headline table (which averages across noise types **and**
-horizons), here is the **break-aware classification performance averaged across all six noise types
-and all four horizons** (α=1), for the **plain** vs **hybrid** GRU — reusing the §6.7 grid.
-A point is *positive* if it is break-adjacent; a forecast residual above a threshold predicts it.
-**Precision / Recall / F1** are reported at the **best-F1 threshold**; **PR-AUC / ROC-AUC** are
-threshold-free.
+The ARIMA report compares several *models* on a detection-style target. The fair analogue for us is a
+comparison of **break detectors**: classical **PELT** and **Chow**, and the modern **GRU residual
+monitor** (§5.4). Per-point **Precision / Recall / F1** (localisation within ±`det_tol`) and
+**Balanced Accuracy** are averaged across the six noise types (α=1).
 
-> Note: plain ≈ hybrid here — the hybrid's advantage is in **forecasting RMSE** (§6.2, §6.6), *not*
-> in break *localisation*. Lower residuals everywhere don't sharpen where the residual spikes, so the
-> two models score similarly on this break-detection view. That contrast is itself worth reporting.
+> These are *genuine* detection numbers (F1 ≈ 0.4–0.6, Balanced Accuracy ≈ 0.6–0.7) — far higher than
+> a forecast-**residual** detector, because detection wants a dedicated detector, not a 10-step-ahead
+> forecast residual. Two honest caveats for the write-up: (i) the **plain and hybrid GRU score equally
+> on *detection*** — the hybrid's advantage is in **forecasting RMSE** (§6.2, §6.6), not in *localising*
+> breaks; (ii) absolute scores are still capped by the **weak-break ceiling** (§4.4: half the breaks are
+> physically too faint to see).
 ''')
 
 code(r'''
-# reuse the §6.7 grid G (every noise x horizon, alpha=1) -> average across all of it (no extra training)
-def _c(col): return float(G[col].mean())
-tab2 = pd.DataFrame([
-    {"Model": "GRU plain",  "Precision": _c("prec_plain"),  "Recall": _c("rec_plain"),
-     "F1": _c("f1_plain"),  "PR-AUC": _c("pr_plain"),  "ROC-AUC": _c("roc_plain")},
-    {"Model": "GRU hybrid", "Precision": _c("prec_hybrid"), "Recall": _c("rec_hybrid"),
-     "F1": _c("f1_hybrid"), "PR-AUC": _c("pr_hybrid"), "ROC-AUC": _c("roc_hybrid")},
-]).round(3)
+C = CFG; rows = []
+for name, kind in [("PELT", "pelt"), ("Chow", "chow"), ("GRU residual monitor", "gru")]:
+    P, R, F, BA = [], [], [], []
+    for noise in C["noises"]:
+        for seed in C["seeds"]:
+            x, lat, tb = generate_series(noise, C["main_alpha"], n=C["n"], dt=C["dt"], T=C["T"],
+                                         level_sigma=C["level_sigma"], seed=seed)
+            xz = (x-x.mean())/x.std(); n = len(xz)
+            if kind == "pelt":  pred = pelt_breaks(xz, C["beta"])
+            elif kind == "chow": pred = chow_scan(xz)[0]
+            else:                pred = gru_monitor_breaks(xz, C["L"], seed)
+            d = detection_prf(pred, tb, C["det_tol"]); dc = detection_classification(n, pred, tb, C["det_tol"])
+            P.append(d["precision"]); R.append(d["recall"]); F.append(d["f1"]); BA.append(dc["bal_acc"])
+    rows.append({"Detector": name, "Precision": np.mean(P), "Recall": np.mean(R),
+                 "F1": np.mean(F), "Balanced Acc": np.mean(BA)})
+tab2 = pd.DataFrame(rows).round(3)
 tab2.to_csv("results/overall_classification.csv", index=False)
-print("Table 2 - overall break-aware classification (mean across noises AND horizons, alpha=1):")
+print("Table 2 - break detection comparison (mean across noises, alpha=1):")
 tab2
 ''')
 
 code(r'''
-cols = ["Precision", "Recall", "F1", "PR-AUC", "ROC-AUC"]
-fig, ax = plt.subplots(figsize=(8.5, 4.6)); xs = np.arange(len(tab2)); w = 0.16
+cols = ["Precision", "Recall", "F1", "Balanced Acc"]
+fig, ax = plt.subplots(figsize=(9, 4.6)); xs = np.arange(len(tab2)); w = 0.2
 for i, mc in enumerate(cols):
-    ax.bar(xs + (i-2)*w, tab2[mc].values, width=w, label=mc)
-ax.set_xticks(xs); ax.set_xticklabels(tab2["Model"]); ax.set_ylim(0, 1.0); ax.set_ylabel("Score")
+    ax.bar(xs + (i-1.5)*w, tab2[mc].values, width=w, label=mc)
+ax.axhline(0.5, color="grey", ls=":", lw=1)
+ax.set_xticks(xs); ax.set_xticklabels(tab2["Detector"]); ax.set_ylim(0, 1.0); ax.set_ylabel("Score")
 ax.grid(True, axis="y", alpha=0.3)
-ax.set_title("Overall break-aware performance (mean across noises & horizons, alpha=1)")
-ax.legend(fontsize=8, ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.12))
+ax.set_title("Break detection: PELT vs Chow vs GRU monitor (mean across noises, alpha=1)")
+ax.legend(fontsize=8, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.12))
 plt.savefig("figures/overall_classification_bars.png", bbox_inches="tight"); plt.show()
 ''')
 

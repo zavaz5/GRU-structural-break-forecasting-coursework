@@ -1,3 +1,4 @@
-Model,Precision,Recall,F1,PR-AUC,ROC-AUC
-GRU plain,0.267,0.23,0.247,0.263,0.525
-GRU hybrid,0.27,0.224,0.245,0.26,0.523
+Detector,Precision,Recall,F1,Balanced Acc
+PELT,0.616,0.546,0.459,0.618
+Chow,0.7,0.431,0.518,0.635
+GRU residual monitor,0.552,0.353,0.419,0.584

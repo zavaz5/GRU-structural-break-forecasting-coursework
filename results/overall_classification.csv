@@ -1,0 +1,3 @@
+Model,Precision,Recall,F1,PR-AUC,ROC-AUC
+GRU plain,0.267,0.23,0.247,0.263,0.525
+GRU hybrid,0.27,0.224,0.245,0.26,0.523

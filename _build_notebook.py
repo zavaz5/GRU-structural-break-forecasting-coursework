@@ -50,7 +50,7 @@ import matplotlib.pyplot as plt
 import torch, torch.nn as nn
 from scipy.signal import find_peaks
 from scipy import stats
-from sklearn.metrics import average_precision_score, roc_auc_score, balanced_accuracy_score, f1_score
+from sklearn.metrics import average_precision_score, roc_auc_score, balanced_accuracy_score, f1_score, precision_score, recall_score
 from sklearn.ensemble import GradientBoostingRegressor
 warnings.filterwarnings("ignore")
 %matplotlib inline
@@ -597,14 +597,22 @@ def break_label(tgt_idx, true_breaks, tol=3):
     return (d <= tol).astype(int)
 
 def residual_metrics(resid, labels):
-    """Do |residuals| concentrate near true breaks?  PR-AUC / ROC-AUC / best-F1."""
+    """Break-aware classification quality of |residual| vs true-break-adjacency:
+    PR-AUC / ROC-AUC (threshold-free) + Precision / Recall / F1 at the best-F1 threshold."""
     score = np.abs(resid)
-    if 0 < labels.sum() < len(labels):
-        f1 = max(f1_score(labels, (score >= np.quantile(score, q)).astype(int), zero_division=0)
-                 for q in np.linspace(0.80, 0.99, 12))
-        return dict(pr_auc=average_precision_score(labels, score),
-                    roc_auc=roc_auc_score(labels, score), f1=f1)
-    return dict(pr_auc=np.nan, roc_auc=np.nan, f1=np.nan)
+    if not (0 < labels.sum() < len(labels)):
+        return dict(precision=np.nan, recall=np.nan, f1=np.nan, pr_auc=np.nan, roc_auc=np.nan)
+    bf1, bp, br = 0.0, 0.0, 0.0
+    for q in np.linspace(0.80, 0.99, 12):
+        pred = (score >= np.quantile(score, q)).astype(int)
+        f1v = f1_score(labels, pred, zero_division=0)
+        if f1v > bf1:
+            bf1 = f1v
+            bp = precision_score(labels, pred, zero_division=0)
+            br = recall_score(labels, pred, zero_division=0)
+    return dict(precision=bp, recall=br, f1=bf1,
+                pr_auc=average_precision_score(labels, score),
+                roc_auc=roc_auc_score(labels, score))
 
 def run_pair(noise, alpha, h, seed, return_arrays=False):
     """Train plain + hybrid GRU on one series; return a dict of metrics."""
@@ -630,7 +638,9 @@ def run_pair(noise, alpha, h, seed, return_arrays=False):
                mae_plain=mae(pp_o, yte), mae_hybrid=mae(ph_o, yte),
                pr_plain=rp["pr_auc"], pr_hybrid=rh["pr_auc"],
                roc_plain=rp["roc_auc"], roc_hybrid=rh["roc_auc"],
-               f1_plain=rp["f1"], f1_hybrid=rh["f1"])
+               f1_plain=rp["f1"], f1_hybrid=rh["f1"],
+               prec_plain=rp["precision"], prec_hybrid=rh["precision"],
+               rec_plain=rp["recall"], rec_hybrid=rh["recall"])
     if return_arrays:
         out["arrays"] = dict(tgt=tgt[te], y=yte, pp=pp_o, ph=ph_o, tb=tb)
     return out
@@ -1018,6 +1028,48 @@ for a, (col, title) in zip(ax.ravel(), panels):
 ax[0, 0].legend(fontsize=8, ncol=2)
 fig.suptitle("All metrics across noise colour and horizon (hybrid GRU, alpha=1)")
 plt.savefig("figures/metric_grid.png", bbox_inches="tight"); plt.show()
+''')
+
+# ===========================================================================
+md(r'''
+### 6.8 Overall break-aware classification — *Table 2 / Figure 1* format
+
+To line up with the ARIMA-family report's headline table (which averages across noise types **and**
+horizons), here is the **break-aware classification performance averaged across all six noise types
+and all four horizons** (α=1), for the **plain** vs **hybrid** GRU — reusing the §6.7 grid.
+A point is *positive* if it is break-adjacent; a forecast residual above a threshold predicts it.
+**Precision / Recall / F1** are reported at the **best-F1 threshold**; **PR-AUC / ROC-AUC** are
+threshold-free.
+
+> Note: plain ≈ hybrid here — the hybrid's advantage is in **forecasting RMSE** (§6.2, §6.6), *not*
+> in break *localisation*. Lower residuals everywhere don't sharpen where the residual spikes, so the
+> two models score similarly on this break-detection view. That contrast is itself worth reporting.
+''')
+
+code(r'''
+# reuse the §6.7 grid G (every noise x horizon, alpha=1) -> average across all of it (no extra training)
+def _c(col): return float(G[col].mean())
+tab2 = pd.DataFrame([
+    {"Model": "GRU plain",  "Precision": _c("prec_plain"),  "Recall": _c("rec_plain"),
+     "F1": _c("f1_plain"),  "PR-AUC": _c("pr_plain"),  "ROC-AUC": _c("roc_plain")},
+    {"Model": "GRU hybrid", "Precision": _c("prec_hybrid"), "Recall": _c("rec_hybrid"),
+     "F1": _c("f1_hybrid"), "PR-AUC": _c("pr_hybrid"), "ROC-AUC": _c("roc_hybrid")},
+]).round(3)
+tab2.to_csv("results/overall_classification.csv", index=False)
+print("Table 2 - overall break-aware classification (mean across noises AND horizons, alpha=1):")
+tab2
+''')
+
+code(r'''
+cols = ["Precision", "Recall", "F1", "PR-AUC", "ROC-AUC"]
+fig, ax = plt.subplots(figsize=(8.5, 4.6)); xs = np.arange(len(tab2)); w = 0.16
+for i, mc in enumerate(cols):
+    ax.bar(xs + (i-2)*w, tab2[mc].values, width=w, label=mc)
+ax.set_xticks(xs); ax.set_xticklabels(tab2["Model"]); ax.set_ylim(0, 1.0); ax.set_ylabel("Score")
+ax.grid(True, axis="y", alpha=0.3)
+ax.set_title("Overall break-aware performance (mean across noises & horizons, alpha=1)")
+ax.legend(fontsize=8, ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.12))
+plt.savefig("figures/overall_classification_bars.png", bbox_inches="tight"); plt.show()
 ''')
 
 # ===========================================================================

@@ -1,0 +1,17 @@
+# Python 3.12 (tested on 3.12.3, Windows 10, CPU-only)
+# Install with:  py -m pip install -r requirements.txt
+#
+# PyTorch CPU build. If you have a CUDA GPU and want acceleration, install the
+# matching CUDA wheel from https://pytorch.org instead of the line below.
+
+numpy>=2.0
+scipy>=1.13
+pandas>=2.2
+scikit-learn>=1.5
+matplotlib>=3.8
+torch>=2.2
+
+# --- only needed to (re)generate or headlessly execute the notebook ---
+nbformat>=5.10
+nbclient>=0.10
+ipykernel>=6.29

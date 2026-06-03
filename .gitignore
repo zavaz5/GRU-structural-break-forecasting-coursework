@@ -1,0 +1,14 @@
+# --- Other people's work: do NOT publish to your own repo ---
+_friend_repo/
+_friend2_repo/
+
+# --- Python / Jupyter junk ---
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.mplconfig/
+
+# --- Optional: peer/group PDFs that are not your own work ---
+# Uncomment if you do NOT want to publish your friends'/group PDFs:
+# АВР_Бурлаков.pdf
+# TimeSeries_2026_group_DSBA_2_Journal_of_Forecasting*.pdf

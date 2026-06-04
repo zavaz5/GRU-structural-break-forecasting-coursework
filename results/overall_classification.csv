@@ -1,4 +1,4 @@
 Detector,Precision,Recall,F1,Balanced Acc
-PELT,0.616,0.546,0.459,0.618
-Chow,0.7,0.431,0.518,0.635
-GRU residual monitor,0.552,0.353,0.419,0.584
+PELT,0.619,0.538,0.448,0.621
+Chow,0.695,0.428,0.514,0.635
+GRU residual monitor,0.553,0.378,0.442,0.597

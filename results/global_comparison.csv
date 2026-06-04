@@ -1,5 +1,5 @@
 ,0
-naive,0.884
-gbm,1.207
-gru_plain,0.885
-gru_hybrid,0.735
+naive,0.852
+gbm,0.939
+gru_plain,0.83
+gru_hybrid,0.465

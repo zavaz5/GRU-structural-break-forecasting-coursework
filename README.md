@@ -93,19 +93,6 @@ known switch points.
   detection recall climbs **0.40→0.88** with strength; this reframes the modest detection numbers as
   *weak breaks*, not a broken detector.
 
-## Honesty / limitations (important — read before defending)
-
-* The **headline hybrid uses PELT applied to the whole series (offline)**, so its segment
-  features encode the target's regime *with hindsight*. This measures **the value of
-  *accurate* break identification** — an informative **upper bound**, not a streaming result.
-* The **causal/online** hybrid (Part 8.1) — running segment statistics using only past data —
-  recovers only **~0–1 %** of that gain. The **offline→online gap is the central limitation**
-  and the motivation for *future work in dynamic / online model adaptation* (online change-point
-  detection, regime-specific fine-tuning / mixture-of-experts).
-* The DGP is **synthetic, univariate, mean-shift-only**. Break-aware residual PR-AUC is
-  similar for plain and hybrid: better forecasting does **not** automatically sharpen break
-  *localisation*. PELT's penalty is **noise-specific** (no single global optimum).
-
 ## Reproducibility
 
 Tested with: numpy 2.4.6, scipy 1.17.1, pandas 3.0.3, scikit-learn 1.8.0,

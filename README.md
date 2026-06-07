@@ -1,9 +1,6 @@
 # Enhancing Time-Series Forecasting with ML through Structural-Break Identification — **GRU**
 
-Research project, HSE FCS / DSBA. This repository is the **experimental engine** for the
-GRU version of the project. It is the GRU counterpart of the LSTM coursework
-(*Burlakov*) and uses the experimental constants (noise families, amplitudes, horizons,
-epochs) from the group journal plan (*TimeSeries 2026, Journal of Forecasting*).
+Research project, HSE FCS / DSBA. 
 
 > **One-line story.** A plain GRU forecasts a non-stationary series with structural breaks
 > and coloured noise; it is fair but imperfect. We detect the breaks with **PELT** (and a
